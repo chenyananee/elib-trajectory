@@ -5,6 +5,7 @@
 #include <string.h>
 #include "../include/elib_traj_defs.h"
 #include "../include/elib_traj_trapezoid.h"
+#include "../include/elib_traj_scurve.h"
 #include "../src/elib_traj_util.h"
 
 #define EPSILON 1e-4f
@@ -206,6 +207,114 @@ static void test_trap_generate_basic(void) {
     assert(fabsf(points[150].vel - 0.0f) < 1.0f);
 }
 
+/* === S-curve profile tests === */
+static elib_traj_scurve_params_t make_scurve_params(void) {
+    elib_traj_scurve_params_t p = {
+        .max_vel = 1000.0f, .max_acc = 5000.0f, .max_dec = 5000.0f,
+        .max_jerk = 50000.0f, .target_pos = 1000.0f,
+    };
+    return p;
+}
+
+static void test_scurve_init_valid(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    assert(elib_traj_scurve_init(&ctx, &p, 0.0f) == ELIB_TRAJ_SCURVE_OK);
+    assert(ctx.initialized == 1);
+}
+static void test_scurve_init_null_ctx(void) {
+    elib_traj_scurve_params_t p = make_scurve_params();
+    assert(elib_traj_scurve_init(NULL, &p, 0.0f) == ELIB_TRAJ_SCURVE_ERR_INVALID_PARAM);
+}
+static void test_scurve_init_null_params(void) {
+    elib_traj_scurve_ctx_t ctx;
+    assert(elib_traj_scurve_init(&ctx, NULL, 0.0f) == ELIB_TRAJ_SCURVE_ERR_INVALID_PARAM);
+}
+static void test_scurve_init_bad_jerk(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    p.max_jerk = 0.0f;
+    assert(elib_traj_scurve_init(&ctx, &p, 0.0f) == ELIB_TRAJ_SCURVE_ERR_INVALID_PARAM);
+}
+static void test_scurve_update_not_initialized(void) {
+    elib_traj_scurve_ctx_t ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    assert(elib_traj_scurve_update(&ctx, 0.01f) == ELIB_TRAJ_SCURVE_ERR_NOT_INITIALIZED);
+}
+static void test_scurve_update_bad_dt(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    elib_traj_scurve_init(&ctx, &p, 0.0f);
+    assert(elib_traj_scurve_update(&ctx, 0.0f) == ELIB_TRAJ_SCURVE_ERR_INVALID_PARAM);
+}
+static void test_scurve_zero_distance(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    p.target_pos = 50.0f;
+    elib_traj_scurve_init(&ctx, &p, 50.0f);
+    elib_traj_status_t status;
+    elib_traj_scurve_get_status(&ctx, &status);
+    assert(status == ELIB_TRAJ_STATUS_FINISHED);
+}
+static void test_scurve_reaches_target(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    elib_traj_scurve_init(&ctx, &p, 0.0f);
+    elib_traj_scurve_update(&ctx, 5.0f);
+    elib_traj_state_t state;
+    elib_traj_scurve_get_state(&ctx, &state);
+    assert(fabsf(state.pos - 1000.0f) < 1.0f);
+    assert(fabsf(state.vel - 0.0f) < 1.0f);
+    elib_traj_status_t status;
+    elib_traj_scurve_get_status(&ctx, &status);
+    assert(status == ELIB_TRAJ_STATUS_FINISHED);
+}
+static void test_scurve_smooth_acceleration(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    elib_traj_scurve_init(&ctx, &p, 0.0f);
+    elib_traj_state_t state;
+    elib_traj_scurve_get_state(&ctx, &state);
+    assert(fabsf(state.acc - 0.0f) < EPSILON);
+    assert(fabsf(state.vel - 0.0f) < EPSILON);
+}
+static void test_scurve_negative_direction(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    p.target_pos = -1000.0f;
+    elib_traj_scurve_init(&ctx, &p, 0.0f);
+    elib_traj_scurve_update(&ctx, 0.5f);
+    elib_traj_state_t state;
+    elib_traj_scurve_get_state(&ctx, &state);
+    assert(state.vel < 0.0f);
+}
+static void test_scurve_reset(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    elib_traj_scurve_init(&ctx, &p, 0.0f);
+    elib_traj_scurve_update(&ctx, 0.5f);
+    assert(elib_traj_scurve_reset(&ctx) == ELIB_TRAJ_SCURVE_OK);
+    assert(fabsf(ctx.elapsed - 0.0f) < EPSILON);
+    assert(ctx.status == ELIB_TRAJ_STATUS_RUNNING);
+}
+static void test_scurve_deinit(void) {
+    elib_traj_scurve_ctx_t ctx;
+    elib_traj_scurve_params_t p = make_scurve_params();
+    elib_traj_scurve_init(&ctx, &p, 0.0f);
+    elib_traj_scurve_deinit(&ctx);
+    assert(ctx.initialized == 0);
+    assert(elib_traj_scurve_update(&ctx, 0.01f) == ELIB_TRAJ_SCURVE_ERR_NOT_INITIALIZED);
+}
+static void test_scurve_generate_basic(void) {
+    elib_traj_scurve_params_t p = make_scurve_params();
+    elib_traj_state_t points[501];
+    elib_traj_scurve_err_t err = elib_traj_scurve_generate(&p, 0.0f, 0.01f, points, 501);
+    assert(err == ELIB_TRAJ_SCURVE_OK);
+    assert(fabsf(points[0].pos - 0.0f) < 1.0f);
+    assert(fabsf(points[500].pos - 1000.0f) < 5.0f);
+    assert(fabsf(points[500].vel - 0.0f) < 5.0f);
+}
+
 int main(void) {
     printf("=== elib-trajectory tests ===\n\n");
     printf("--- Utility functions ---\n");
@@ -236,6 +345,20 @@ int main(void) {
     RUN_TEST(test_trap_generate_null_points);
     RUN_TEST(test_trap_generate_zero_count);
     RUN_TEST(test_trap_generate_basic);
+    printf("\n--- S-curve profile ---\n");
+    RUN_TEST(test_scurve_init_valid);
+    RUN_TEST(test_scurve_init_null_ctx);
+    RUN_TEST(test_scurve_init_null_params);
+    RUN_TEST(test_scurve_init_bad_jerk);
+    RUN_TEST(test_scurve_update_not_initialized);
+    RUN_TEST(test_scurve_update_bad_dt);
+    RUN_TEST(test_scurve_zero_distance);
+    RUN_TEST(test_scurve_reaches_target);
+    RUN_TEST(test_scurve_smooth_acceleration);
+    RUN_TEST(test_scurve_negative_direction);
+    RUN_TEST(test_scurve_reset);
+    RUN_TEST(test_scurve_deinit);
+    RUN_TEST(test_scurve_generate_basic);
     printf("\n%d/%d tests passed\n", tests_passed, tests_run);
     return (tests_passed == tests_run) ? 0 : 1;
 }
