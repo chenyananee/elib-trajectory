@@ -31,7 +31,9 @@ typedef struct {
     elib_traj_val_t elapsed;
     elib_traj_state_t state;
     elib_traj_status_t status;
-    int initialized;
+    struct {
+        uint8_t initialized : 1;
+    } bit_flags;
 } elib_traj_trapezoid_ctx_t;
 
 elib_traj_trapezoid_err_t elib_traj_trapezoid_init(

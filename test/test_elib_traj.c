@@ -59,7 +59,7 @@ static void test_trap_init_valid(void) {
     elib_traj_trapezoid_ctx_t ctx;
     elib_traj_trapezoid_params_t p = make_trap_params();
     assert(elib_traj_trapezoid_init(&ctx, &p, 0.0f) == ELIB_TRAJ_TRAPEZOID_OK);
-    assert(ctx.initialized == 1);
+    assert(ctx.bit_flags.initialized == 1);
 }
 static void test_trap_init_null_ctx(void) {
     elib_traj_trapezoid_params_t p = make_trap_params();
@@ -185,7 +185,7 @@ static void test_trap_deinit(void) {
     elib_traj_trapezoid_params_t p = make_trap_params();
     elib_traj_trapezoid_init(&ctx, &p, 0.0f);
     elib_traj_trapezoid_deinit(&ctx);
-    assert(ctx.initialized == 0);
+    assert(ctx.bit_flags.initialized == 0);
     assert(elib_traj_trapezoid_update(&ctx, 0.01f) == ELIB_TRAJ_TRAPEZOID_ERR_NOT_INITIALIZED);
 }
 static void test_trap_generate_null_points(void) {
@@ -220,7 +220,7 @@ static void test_scurve_init_valid(void) {
     elib_traj_scurve_ctx_t ctx;
     elib_traj_scurve_params_t p = make_scurve_params();
     assert(elib_traj_scurve_init(&ctx, &p, 0.0f) == ELIB_TRAJ_SCURVE_OK);
-    assert(ctx.initialized == 1);
+    assert(ctx.bit_flags.initialized == 1);
 }
 static void test_scurve_init_null_ctx(void) {
     elib_traj_scurve_params_t p = make_scurve_params();
@@ -302,7 +302,7 @@ static void test_scurve_deinit(void) {
     elib_traj_scurve_params_t p = make_scurve_params();
     elib_traj_scurve_init(&ctx, &p, 0.0f);
     elib_traj_scurve_deinit(&ctx);
-    assert(ctx.initialized == 0);
+    assert(ctx.bit_flags.initialized == 0);
     assert(elib_traj_scurve_update(&ctx, 0.01f) == ELIB_TRAJ_SCURVE_ERR_NOT_INITIALIZED);
 }
 static void test_scurve_generate_basic(void) {

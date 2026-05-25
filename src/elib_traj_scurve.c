@@ -199,7 +199,7 @@ elib_traj_scurve_err_t elib_traj_scurve_init(
         ctx->distance = 0;
         ctx->state.pos = start_pos; ctx->state.vel = 0; ctx->state.acc = 0;
         ctx->status = ELIB_TRAJ_STATUS_FINISHED;
-        ctx->initialized = 1;
+        ctx->bit_flags.initialized = 1;
         return ELIB_TRAJ_SCURVE_OK;
     }
 
@@ -212,18 +212,18 @@ elib_traj_scurve_err_t elib_traj_scurve_init(
     ctx->elapsed = 0;
     ctx->state.pos = start_pos; ctx->state.vel = 0; ctx->state.acc = 0;
     ctx->status = ELIB_TRAJ_STATUS_RUNNING;
-    ctx->initialized = 1;
+    ctx->bit_flags.initialized = 1;
     return ELIB_TRAJ_SCURVE_OK;
 }
 
 void elib_traj_scurve_deinit(elib_traj_scurve_ctx_t *ctx) {
     if (ctx == NULL) return;
-    ctx->initialized = 0;
+    ctx->bit_flags.initialized = 0;
 }
 
 elib_traj_scurve_err_t elib_traj_scurve_reset(elib_traj_scurve_ctx_t *ctx) {
     if (ctx == NULL) return ELIB_TRAJ_SCURVE_ERR_INVALID_PARAM;
-    if (!ctx->initialized) return ELIB_TRAJ_SCURVE_ERR_NOT_INITIALIZED;
+    if (!ctx->bit_flags.initialized) return ELIB_TRAJ_SCURVE_ERR_NOT_INITIALIZED;
     ctx->elapsed = 0;
     ctx->state.pos = ctx->start_pos; ctx->state.vel = 0; ctx->state.acc = 0;
     ctx->status = ELIB_TRAJ_STATUS_RUNNING;
@@ -233,7 +233,7 @@ elib_traj_scurve_err_t elib_traj_scurve_reset(elib_traj_scurve_ctx_t *ctx) {
 elib_traj_scurve_err_t elib_traj_scurve_update(
     elib_traj_scurve_ctx_t *ctx, elib_traj_val_t dt) {
     if (ctx == NULL) return ELIB_TRAJ_SCURVE_ERR_INVALID_PARAM;
-    if (!ctx->initialized) return ELIB_TRAJ_SCURVE_ERR_NOT_INITIALIZED;
+    if (!ctx->bit_flags.initialized) return ELIB_TRAJ_SCURVE_ERR_NOT_INITIALIZED;
     if (dt <= (elib_traj_val_t)0) return ELIB_TRAJ_SCURVE_ERR_INVALID_PARAM;
     if (ctx->status == ELIB_TRAJ_STATUS_FINISHED) return ELIB_TRAJ_SCURVE_OK;
 
